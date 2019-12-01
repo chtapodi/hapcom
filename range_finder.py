@@ -14,6 +14,7 @@ p.start(50)
 
 step=5
 print("starting")
+print("i=edit freq, e=edit step, w&s to inc and dec")
 while True :
 	try :
 		key=readchar.readkey()
@@ -22,6 +23,10 @@ while True :
 			freq+=step
 		elif key=='s' :
 			freq-=step
+		elif key=='e' :
+			step=int(input("please input new step val"))
+		elif key=='i' :
+			freq=int(input("please input new freq val"))
 		else :
 			break
 		print("freq: ", freq)
