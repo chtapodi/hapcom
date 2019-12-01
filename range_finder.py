@@ -30,6 +30,8 @@ while True :
 		else :
 			break
 		print("freq: ", freq)
+		if freq<=0 :
+			freq=1
 		p.ChangeFrequency(freq)
 		time.sleep(.1)
 	except KeyboardInterrupt:

@@ -156,7 +156,7 @@ def main():
 	freq=250 #starting freq
 	min_freq=150 #the min and max vals are determined by the range finding script
 	max_freq=350
-	max_diff=50
+	max_diff=100
 
 	pwm=init_gpio(pin, freq)
 	print("initialized")
