@@ -25,7 +25,7 @@ def isData(): #https://stackoverflow.com/a/2409034
 	return select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], [])
 
 def write_freq(pwm, freq) :
-	pwm.ChangeFrequency(req)
+	pwm.ChangeFrequency(freq)
 
 def test_freq(pwm, dict, base_freq, compare_freq) :
 	key=None
