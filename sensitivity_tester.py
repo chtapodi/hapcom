@@ -10,6 +10,9 @@ import sys
 import tty
 import select
 
+import matplotlib.pyplot as plt
+
+
 def init_gpio(pin, freq) :
 	GPIO.setwarnings(False)
 	GPIO.setmode(GPIO.BOARD)
@@ -25,6 +28,7 @@ def isData(): #https://stackoverflow.com/a/2409034
 def test_freq(pwm, dict, base_freq, compare_freq) :
 	key=None
 
+	print("diff= ", abs(base_freq-compare_freq))
 	old_settings = termios.tcgetattr(sys.stdin)
 	try:
 		tty.setcbreak(sys.stdin.fileno())
@@ -78,14 +82,23 @@ def get_compare_freq(dict, base_freq, max_diff) :
 	if base_freq in dict : #if this freq has already been used
 		success=dict[base_freq][True]
 		failiure=dict[base_freq][False]
-		if (len(success)>0 and len(failiure)>0) and (abs(max(failiure)-min(success))<=1) :
-			compare_freq=None #the distinction has been found
+
+		if  len(failiure)>0 :
+			if len(success)>0 and (abs(max(failiure)-min(success))<=1) :
+				compare_freq=None #the distinction has been found
+			else : #This should ensure values below the sense level do not keep popping up
+				print("there is a same, there is no diff or diff and same are not too close")
+				diff=random.randrange(max(failiure),max_diff)
+				compare_freq=base_freq+(1 if random.random() < 0.5 else -1)*diff
+
 		else :
+			print("loop case")
 			val=random.randrange(base_freq-max_diff,base_freq+max_diff)
 			while (abs(val-base_freq) not in success and abs(val-base_freq) not in failiure) : #This will randomly choose values within the given range unless the value has previously been used.
 				val=random.randrange(base_freq-max_diff,base_freq+max_diff)
 			compare_freq=val
 	else :
+		print("first value for entry")
 		compare_freq=random.randrange(base_freq-max_diff,base_freq+max_diff)
 
 	return compare_freq
@@ -110,14 +123,21 @@ def run_tests(pwm, min_freq, max_freq, max_diff) :
 				test_freq(pwm, freq_log, base_freq, compare_freq)
 	except KeyboardInterrupt :
 		print("broke")
-		pickle.dump( freq_log, open( "freq_log.p", "wb" ) )
+	pickle.dump( freq_log, open( "freq_log.p", "wb" ) )
+	plot_data(freq_log)
+
+
+def plot_data(dict) :
+	for key in dict.keys() :
+		plt.scatter(key, min(dict[key][True]), c="blue")
+		plt.scatter(key, max(dict[key][False]), c="red")
 
 def main():
 	pin=12
 	freq=250 #starting freq
-	min_freq=100
-	max_freq=400
-	max_diff=20
+	min_freq=150 #the min and max vals are determined by the range finding script
+	max_freq=350
+	max_diff=50
 
 	pwm=init_gpio(pin, freq)
 	print("initialized")
