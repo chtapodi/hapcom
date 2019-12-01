@@ -24,6 +24,8 @@ def init_gpio(pin, freq) :
 def isData(): #https://stackoverflow.com/a/2409034
 	return select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], [])
 
+def write_freq(pwm, freq) :
+	pwm.ChangeFrequency(req)
 
 def test_freq(pwm, dict, base_freq, compare_freq) :
 	key=None
@@ -32,10 +34,10 @@ def test_freq(pwm, dict, base_freq, compare_freq) :
 		tty.setcbreak(sys.stdin.fileno())
 
 		while True:
-			pwm.ChangeFrequency(base_freq)
+			write_freq(pwm,base_freq)
 			# print(base_freq)
 			time.sleep(1)
-			pwm.ChangeFrequency(compare_freq)
+			write_freq(pwm,compare_freq)
 			# print(compare_freq)
 			time.sleep(1)
 
@@ -46,7 +48,6 @@ def test_freq(pwm, dict, base_freq, compare_freq) :
 
 	finally:
 		termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
-
 
 	if key=='s' : #detected as the same
 		insert_freq(dict, base_freq, compare_freq, False)
@@ -100,9 +101,6 @@ def get_compare_freq(dict, base_freq, max_diff) :
 					#This should generate a random value within the range but avoiding values less than the "same" cutoff
 					diff=random.randrange(0,min(success))
 					# print("succ diff= ", diff)
-
-
-
 	else :
 		# print("first value for entry")
 		diff=random.randrange(0,max_diff)
