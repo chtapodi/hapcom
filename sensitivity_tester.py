@@ -27,18 +27,16 @@ def isData(): #https://stackoverflow.com/a/2409034
 
 def test_freq(pwm, dict, base_freq, compare_freq) :
 	key=None
-
-	print("diff= ", abs(base_freq-compare_freq))
 	old_settings = termios.tcgetattr(sys.stdin)
 	try:
 		tty.setcbreak(sys.stdin.fileno())
 
 		while True:
 			pwm.ChangeFrequency(base_freq)
-			print(base_freq)
+			# print(base_freq)
 			time.sleep(1)
 			pwm.ChangeFrequency(compare_freq)
-			print(compare_freq)
+			# print(compare_freq)
 			time.sleep(1)
 
 			if isData():
@@ -65,7 +63,6 @@ def insert_freq(dict, base_freq, compare_freq, detection_status) :
 	if base_freq not in dict :
 		dict[base_freq]={True:[], False:[]}
 	dict[base_freq][detection_status].append(abs(base_freq-compare_freq))
-	print(dict)
 
 #selects a base_freq
 def get_base_feq(dict, min, max, max_diff) :
@@ -75,37 +72,50 @@ def get_base_feq(dict, min, max, max_diff) :
 			val=key
 	return val
 
-
-#generates a frequency from the base_freq
 def get_compare_freq(dict, base_freq, max_diff) :
-	compare_freq=None
+	# print("get freq")
+	diff=-1
 	if base_freq in dict : #if this freq has already been used
+		print(base_freq, ":", dict[base_freq])
 		success=dict[base_freq][True]
 		failiure=dict[base_freq][False]
 
-		if  len(failiure)>0 :
-			if len(success)>0 and (abs(max(failiure)-min(success))<=1) :
-				compare_freq=None #the distinction has been found
-			else : #This should ensure values below the sense level do not keep popping up
-				print("there is a same, there is no diff or diff and same are not too close")
-				diff=random.randrange(max(failiure),max_diff)
-				compare_freq=base_freq+(1 if random.random() < 0.5 else -1)*diff
+		if len(failiure)>0 or len(success)>0 :
+			while diff in success or diff in failiure or diff==-1 :
+				# print("loop")
+				if len(failiure)>0 and len(success)>0 : #if there are entries in both
+					if (abs(max(failiure)-min(success))<=1) :
+						# print("returned none")
+						return None #the distinction has been found
+					else :
+						#narrowing in on where the distinction is
+						# print("narrowing")
+						diff=random.randrange(max(failiure),min(success))
 
-		else :
-			print("loop case")
-			val=random.randrange(base_freq-max_diff,base_freq+max_diff)
-			while (abs(val-base_freq) not in success and abs(val-base_freq) not in failiure) : #This will randomly choose values within the given range unless the value has previously been used.
-				val=random.randrange(base_freq-max_diff,base_freq+max_diff)
-			compare_freq=val
+				elif len(failiure)>0 : #If there have only been failiures
+					#This should generate a random value within the range but avoiding values less than the "same" cutoff
+					diff=random.randrange(max(failiure),max_diff)
+					# print("fail diff= ", diff)
+				else : #If there have only been failiures
+					#This should generate a random value within the range but avoiding values less than the "same" cutoff
+					diff=random.randrange(0,min(success))
+					# print("succ diff= ", diff)
+
+
+
 	else :
-		print("first value for entry")
-		compare_freq=random.randrange(base_freq-max_diff,base_freq+max_diff)
-
+		# print("first value for entry")
+		diff=random.randrange(0,max_diff)
+	# print("final_diff ", diff)
+	compare_freq=base_freq+(1 if random.random() < 0.5 else -1)*diff
 	return compare_freq
+
+
 
 
 def run_tests(pwm, min_freq, max_freq, max_diff) :
 	None_counter=0
+	completed_freqs=[]
 	freq_log={}
 	print("starting tests")
 	num_vals=int((max_freq-min_freq)/max_diff)
@@ -114,13 +124,14 @@ def run_tests(pwm, min_freq, max_freq, max_diff) :
 	try :
 		while None_counter<num_vals :
 			base_freq=get_base_feq(freq_log, min_freq, max_freq, max_diff)
-
-			compare_freq=get_compare_freq(freq_log, base_freq, max_diff)
-			if compare_freq==None :
-				None_counter+=1
-				print("already completed")
-			else :
-				test_freq(pwm, freq_log, base_freq, compare_freq)
+			if base_freq not in completed_freqs :
+				compare_freq=get_compare_freq(freq_log, base_freq, max_diff)
+				if compare_freq==None :
+					None_counter+=1
+					completed_freqs.append(base_freq)
+					# print("already completed")
+				else :
+					test_freq(pwm, freq_log, base_freq, compare_freq)
 	except KeyboardInterrupt :
 		print("broke")
 	pickle.dump( freq_log, open( "freq_log.p", "wb" ) )
@@ -128,9 +139,17 @@ def run_tests(pwm, min_freq, max_freq, max_diff) :
 
 
 def plot_data(dict) :
-	for key in dict.keys() :
-		plt.scatter(key, min(dict[key][True]), c="blue")
-		plt.scatter(key, max(dict[key][False]), c="red")
+	selected=[]
+	for key in dict :
+		print("key ", dict[key][True])
+		success=dict[key][True]
+		failiure=dict[key][False]
+		selected.append(max(success))
+		for point in success :
+			plt.scatter(key, point, c="blue")
+		for point in failiure :
+			plt.scatter(key, point, c="red")
+	plt.savefig('collected_data.png')
 
 def main():
 	pin=12
